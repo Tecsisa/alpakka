@@ -24,14 +24,14 @@ private[ftp] trait FtpSourceFactory[FtpClient] { self =>
   protected[this] def ftpIOSourceName: String
 
   protected[this] def createBrowserGraph(
-      _basePath: String,
+      _path: Path,
       _ftpLike: FtpLike[FtpClient, S],
       _disconnectAfterCompletion: Boolean
   )(_handlerF: () => _ftpLike.Handler): FtpBrowserGraphStage[FtpClient, S] =
     new FtpBrowserGraphStage[FtpClient, S] {
       type H = _ftpLike.Handler
       lazy val name: String = ftpBrowserSourceName
-      val basePath: String = _basePath
+      val path: Path = _path
       val disconnectAfterCompletion: Boolean = _disconnectAfterCompletion
       val connectF: () => H = _handlerF
       val ftpClient: () => FtpClient = self.ftpClient

@@ -13,31 +13,17 @@ import akka.util.ByteString.ByteString1C
 import scala.concurrent.{ Future, Promise }
 import scala.util.control.NonFatal
 import java.io.InputStream
-import java.nio.file.Path
 
 private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings]
-    extends GraphStageWithMaterializedValue[SourceShape[ByteString], Future[IOResult]] {
-
-  type H
-
-  def name: String
-
-  def path: Path
+    extends GraphStageWithMaterializedValue[SourceShape[ByteString], Future[IOResult]]
+    with FtpGraphStageParams[FtpClient, S] {
 
   def chunkSize: Int
 
-  def disconnectAfterCompletion: Boolean
-
-  def connectF: () => H
-
-  def ftpClient: () => FtpClient
-
-  val ftpLike: FtpLike[FtpClient, S] { type Handler = H }
+  val shape = SourceShape(Outlet[ByteString](s"$name.out"))
 
   override def initialAttributes: Attributes =
     super.initialAttributes and Attributes.name(name) and IODispatcher
-
-  val shape = SourceShape(Outlet[ByteString](s"$name.out"))
 
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
 

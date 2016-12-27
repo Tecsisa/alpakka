@@ -27,7 +27,10 @@ public class FtpSourceTest extends PlainFtpSupportImpl implements CommonFtpSourc
 
   //#traversing
   public Source<FtpFile, NotUsed> getBrowserSource(String basePath) throws Exception {
-    return Ftp.ls(basePath, settings());
+    if (basePath.isEmpty())
+      return Ftp.ls(settings());
+    else
+      return Ftp.ls(getFileSystem().getPath(basePath), settings());
   }
   //#traversing
 

@@ -25,10 +25,13 @@ trait BaseSftpSpec extends SftpSupportImpl with BaseSpec {
   //#create-settings
 
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed] =
-    sFtp.ls(
-      basePath,
-      settings
-    )
+    if (basePath.isEmpty)
+      sFtp.ls(settings)
+    else
+      sFtp.ls(
+        getFileSystem.getPath(basePath),
+        settings
+      )
 
   protected def retrieveFromPath(path: String): Source[ByteString, Future[IOResult]] =
     sFtp.fromPath(

@@ -31,7 +31,10 @@ public class FtpsSourceTest extends FtpsSupportImpl implements CommonFtpSourceTe
   }
 
   public Source<FtpFile, NotUsed> getBrowserSource(String basePath) throws Exception {
-    return Ftps.ls(basePath, settings());
+    if (basePath.isEmpty())
+      return Ftps.ls(settings());
+    else
+      return Ftps.ls(getFileSystem().getPath(basePath), settings());
   }
 
   public Source<ByteString, CompletionStage<IOResult>> getIOSource(String path) throws Exception {

@@ -26,7 +26,10 @@ trait BaseFtpSpec extends PlainFtpSupportImpl with BaseSpec {
 
   //#traversing
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed] =
-    Ftp.ls(basePath, settings)
+    if (basePath.isEmpty)
+      Ftp.ls(settings)
+    else
+      Ftp.ls(getFileSystem.getPath(basePath), settings)
   //#traversing
 
   //#retrieving

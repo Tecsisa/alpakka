@@ -10,21 +10,9 @@ import akka.stream.impl.Stages.DefaultAttributes.IODispatcher
 import akka.stream.stage.GraphStageLogic
 import scala.util.control.NonFatal
 
-private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] extends GraphStage[SourceShape[FtpFile]] {
-
-  type H
-
-  def name: String
-
-  def basePath: String
-
-  def disconnectAfterCompletion: Boolean
-
-  def connectF: () => H
-
-  def ftpClient: () => FtpClient
-
-  val ftpLike: FtpLike[FtpClient, S] { type Handler = H }
+private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings]
+    extends GraphStage[SourceShape[FtpFile]]
+    with FtpGraphStageParams[FtpClient, S] {
 
   val shape: SourceShape[FtpFile] = SourceShape(Outlet[FtpFile](s"$name.out"))
 
@@ -44,7 +32,7 @@ private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] exte
         super.preStart()
         try {
           handler = Some(connectF())
-          buffer = initBuffer(basePath)
+          buffer = initBuffer(path.toAbsolutePath.toString)
         } catch {
           case NonFatal(t) =>
             disconnect()

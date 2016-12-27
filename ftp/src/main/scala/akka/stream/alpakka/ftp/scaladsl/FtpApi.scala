@@ -15,7 +15,7 @@ import com.jcraft.jsch.JSch
 import org.apache.commons.net.ftp.FTPClient
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
-import java.nio.file.Path
+import java.nio.file.{ Path, Paths }
 
 sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
 
@@ -41,7 +41,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(host: String): Source[FtpFile, NotUsed] =
-    ls(host, basePath = "")
+    ls(host, basePath = Paths.get("/"))
 
   /**
    * Scala API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -51,7 +51,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @param basePath Base path from which traverse the remote file server
    * @return A [[Source]] of [[FtpFile]]s
    */
-  def ls(host: String, basePath: String): Source[FtpFile, NotUsed] =
+  def ls(host: String, basePath: Path): Source[FtpFile, NotUsed] =
     ls(basePath, defaultSettings(host))
 
   /**
@@ -63,7 +63,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(host: String, username: String, password: String): Source[FtpFile, NotUsed] =
-    ls("", defaultSettings(host, Some(username), Some(password)))
+    ls(Paths.get("/"), defaultSettings(host, Some(username), Some(password)))
 
   /**
    * Scala API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -74,8 +74,11 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @param basePath Base path from which traverse the remote file server
    * @return A [[Source]] of [[FtpFile]]s
    */
-  def ls(host: String, username: String, password: String, basePath: String): Source[FtpFile, NotUsed] =
+  def ls(host: String, username: String, password: String, basePath: Path): Source[FtpFile, NotUsed] =
     ls(basePath, defaultSettings(host, Some(username), Some(password)))
+
+  def ls(connectionSettings: S): Source[FtpFile, NotUsed] =
+    ls(Paths.get("/"), connectionSettings)
 
   /**
    * Scala API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -84,7 +87,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @param connectionSettings connection settings
    * @return A [[Source]] of [[FtpFile]]s
    */
-  def ls(basePath: String, connectionSettings: S): Source[FtpFile, NotUsed] =
+  def ls(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
     Source.fromGraph(createBrowserGraph(basePath, ftpLike,
         _disconnectAfterCompletion = true)(() => connect(connectionSettings)))
 

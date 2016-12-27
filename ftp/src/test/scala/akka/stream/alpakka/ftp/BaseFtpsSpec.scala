@@ -25,10 +25,13 @@ trait BaseFtpsSpec extends FtpsSupportImpl with BaseSpec {
   //#create-settings
 
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed] =
-    Ftps.ls(
-      basePath,
-      settings
-    )
+    if (basePath.isEmpty)
+      Ftps.ls(settings)
+    else
+      Ftps.ls(
+        getFileSystem.getPath(basePath),
+        settings
+      )
 
   protected def retrieveFromPath(path: String): Source[ByteString, Future[IOResult]] =
     Ftps.fromPath(

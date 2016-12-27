@@ -27,7 +27,10 @@ public class SftpSourceTest extends SftpSupportImpl implements CommonFtpSourceTe
   }
 
   public Source<FtpFile, NotUsed> getBrowserSource(String basePath) throws Exception {
-    return Sftp.ls(basePath, settings());
+    if (basePath.isEmpty())
+      return Sftp.ls(settings());
+    else
+      return Sftp.ls(getFileSystem().getPath(basePath), settings());
   }
 
   public Source<ByteString, CompletionStage<IOResult>> getIOSource(String path) throws Exception {
