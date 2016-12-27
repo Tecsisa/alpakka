@@ -7,18 +7,24 @@ package impl
 import akka.stream.stage.{ GraphStage, OutHandler }
 import akka.stream.{ Attributes, Outlet, SourceShape }
 import akka.stream.impl.Stages.DefaultAttributes.IODispatcher
+import akka.stream.stage.GraphStageLogic
+import scala.util.control.NonFatal
 
 private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] extends GraphStage[SourceShape[FtpFile]] {
+
+  type H
 
   def name: String
 
   def basePath: String
 
-  def connectionSettings: S
+  def disconnectAfterCompletion: Boolean
+
+  def connectF: () => H
 
   def ftpClient: () => FtpClient
 
-  val ftpLike: FtpLike[FtpClient, S]
+  val ftpLike: FtpLike[FtpClient, S] { type Handler = H }
 
   val shape: SourceShape[FtpFile] = SourceShape(Outlet[FtpFile](s"$name.out"))
 
@@ -26,9 +32,35 @@ private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] exte
     super.initialAttributes and Attributes.name(name) and IODispatcher
 
   def createLogic(inheritedAttributes: Attributes) = {
-    val logic = new FtpGraphStageLogic[FtpFile, FtpClient, S](shape, ftpLike, connectionSettings, ftpClient) {
 
+    val logic = new GraphStageLogic(shape) {
+      import shape.out
+
+      private[this] implicit val client: FtpClient = ftpClient()
+      private[this] var handler: Option[H] = None
       private[this] var buffer: Seq[FtpFile] = Seq.empty[FtpFile]
+
+      override def preStart(): Unit = {
+        super.preStart()
+        try {
+          handler = Some(connectF())
+          buffer = initBuffer(basePath)
+        } catch {
+          case NonFatal(t) =>
+            disconnect()
+            failStage(t)
+        }
+      }
+
+      override def postStop(): Unit = {
+        if (disconnectAfterCompletion)
+          disconnect()
+        super.postStop()
+      }
+
+      protected[this] def disconnect(): Unit =
+        if (disconnectAfterCompletion)
+          handler.foreach(ftpLike.disconnect)
 
       setHandler(out,
         new OutHandler {
@@ -60,17 +92,9 @@ private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] exte
           try {
             disconnect()
           } finally {
-            matSuccess()
             super.onDownstreamFinish()
           }
       }) // end of handler
-
-      protected[this] def doPreStart(): Unit =
-        buffer = initBuffer(basePath)
-
-      override protected[this] def matSuccess() = true
-
-      override protected[this] def matFailure(t: Throwable) = true
 
       private[this] def initBuffer(basePath: String) =
         getFilesFromPath(basePath)

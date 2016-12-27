@@ -7,6 +7,7 @@ package impl
 import akka.stream.stage.{ GraphStageWithMaterializedValue, OutHandler }
 import akka.stream.{ Attributes, IOResult, Outlet, SourceShape }
 import akka.stream.impl.Stages.DefaultAttributes.IODispatcher
+import akka.stream.stage.GraphStageLogic
 import akka.util.ByteString
 import akka.util.ByteString.ByteString1C
 import scala.concurrent.{ Future, Promise }
@@ -17,17 +18,21 @@ import java.nio.file.Path
 private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings]
     extends GraphStageWithMaterializedValue[SourceShape[ByteString], Future[IOResult]] {
 
+  type H
+
   def name: String
 
   def path: Path
 
   def chunkSize: Int
 
-  def connectionSettings: S
+  def disconnectAfterCompletion: Boolean
 
-  implicit def ftpClient: () => FtpClient
+  def connectF: () => H
 
-  val ftpLike: FtpLike[FtpClient, S]
+  def ftpClient: () => FtpClient
+
+  val ftpLike: FtpLike[FtpClient, S] { type Handler = H }
 
   override def initialAttributes: Attributes =
     super.initialAttributes and Attributes.name(name) and IODispatcher
@@ -38,10 +43,33 @@ private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings]
 
     val matValuePromise = Promise[IOResult]()
 
-    val logic = new FtpGraphStageLogic[ByteString, FtpClient, S](shape, ftpLike, connectionSettings, ftpClient) {
+    val logic = new GraphStageLogic(shape) {
+      import shape.out
 
+      private[this] implicit val client: FtpClient = ftpClient()
+      private[this] var handler: Option[H] = None
       private[this] var isOpt: Option[InputStream] = None
       private[this] var readBytesTotal: Long = 0L
+
+      override def preStart(): Unit = {
+        super.preStart()
+        try {
+          handler = Some(connectF())
+          val tryIs = ftpLike.retrieveFileInputStream(path.toAbsolutePath.toString, handler.get)
+          if (tryIs.isSuccess)
+            isOpt = tryIs.toOption
+          else
+            tryIs.failed.foreach(throw _)
+        } catch {
+          case NonFatal(t) =>
+            disconnect()
+            failStage(t)
+        }
+      }
+
+      protected[this] def disconnect(): Unit =
+        if (disconnectAfterCompletion)
+          handler.foreach(ftpLike.disconnect)
 
       setHandler(out,
         new OutHandler {
@@ -75,14 +103,6 @@ private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings]
         } finally {
           super.postStop()
         }
-
-      protected[this] def doPreStart(): Unit = {
-        val tryIs = ftpLike.retrieveFileInputStream(path.toAbsolutePath.toString, handler.get)
-        if (tryIs.isSuccess)
-          isOpt = tryIs.toOption
-        else
-          tryIs.failed.foreach { case NonFatal(t) => throw t }
-      }
 
       protected[this] def matSuccess(): Boolean =
         matValuePromise.trySuccess(IOResult.createSuccessful(readBytesTotal))
