@@ -72,7 +72,14 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
-    buildBrowserScalaSource(basePath, connectionSettings)
+    buildBrowserScalaSource(basePath, () => connect(connectionSettings), disconnectAfterCompletion = true)
+
+  def ls(
+      basePath: Path,
+      handler: ftpLike.Handler,
+      disconnectAfterCompletion: Boolean = false
+  ): Source[FtpFile, NotUsed] =
+    buildBrowserScalaSource(basePath, () => handler, disconnectAfterCompletion)
 
   /**
    * Scala API: creates a [[Source]] of [[ByteString]] from some file [[Path]].
@@ -96,6 +103,12 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
   def fromPath(host: String, username: String, password: String, path: Path): Source[ByteString, Future[IOResult]] =
     fromPath(path, defaultSettings(host, Some(username), Some(password)))
 
+  def fromPath(
+      path: Path,
+      connectionSettings: S
+  ): Source[ByteString, Future[IOResult]] =
+    fromPath(path, connectionSettings, DefaultChunkSize)
+
   /**
    * Scala API: creates a [[Source]] of [[ByteString]] from some file [[Path]].
    *
@@ -107,9 +120,17 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
   def fromPath(
       path: Path,
       connectionSettings: S,
-      chunkSize: Int = DefaultChunkSize
+      chunkSize: Int
   ): Source[ByteString, Future[IOResult]] =
-    buildIOScalaSource(path, connectionSettings, chunkSize)
+    buildIOScalaSource(path, chunkSize, () => connect(connectionSettings), disconnectAfterCompletion = true)
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler,
+      chunkSize: Int,
+      disconnectAfterCompletion: Boolean = false
+  ): Source[ByteString, Future[IOResult]] =
+    buildIOScalaSource(path, chunkSize, () => handler, disconnectAfterCompletion)
 }
 
 object Ftp extends FtpApi[FTPClient] with FtpSourceParams

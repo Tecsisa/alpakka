@@ -31,17 +31,20 @@ private[ftp] trait FtpBaseApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
 
   protected[this] implicit val ftpLike: FtpLike[FtpClient, S]
 
-  protected[this] def buildBrowserScalaSource(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
-    Source.fromGraph(createBrowserGraph(basePath, ftpLike,
-        _disconnectAfterCompletion = true)(() => connect(connectionSettings)))
+  protected[this] def buildBrowserScalaSource(
+      basePath: Path,
+      handlerF: () => ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
+  ): Source[FtpFile, NotUsed] =
+    Source.fromGraph(createBrowserGraph(basePath, ftpLike, disconnectAfterCompletion)(handlerF))
 
   protected[this] def buildIOScalaSource(
       path: Path,
-      connectionSettings: S,
-      chunkSize: Int
+      chunkSize: Int,
+      handlerF: () => ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
   ): Source[ByteString, Future[IOResult]] =
-    Source.fromGraph(createIOGraph(path, ftpLike, chunkSize,
-        _disconnectAfterCompletion = true)(() => connect(connectionSettings)))
+    Source.fromGraph(createIOGraph(path, ftpLike, chunkSize, disconnectAfterCompletion)(handlerF))
 }
 
 private[ftp] trait FtpSourceParams extends FtpSource with FtpDefaultSettings {

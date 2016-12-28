@@ -72,7 +72,17 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
-    buildBrowserScalaSource(basePath, connectionSettings).asJava
+    buildBrowserScalaSource(basePath, () => connect(connectionSettings), disconnectAfterCompletion = true).asJava
+
+  def ls(basePath: Path, handler: ftpLike.Handler): Source[FtpFile, NotUsed] =
+    ls(basePath, handler, disconnectAfterCompletion = false)
+
+  def ls(
+      basePath: Path,
+      handler: ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
+  ): Source[FtpFile, NotUsed] =
+    buildBrowserScalaSource(basePath, () => handler, disconnectAfterCompletion).asJava
 
   /**
    * Java API: creates a [[Source]] of [[ByteString]] from some file [[Path]].
@@ -125,7 +135,39 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
       chunkSize: Int = DefaultChunkSize
   ): Source[ByteString, CompletionStage[IOResult]] = {
     import scala.compat.java8.FutureConverters._
-    buildIOScalaSource(path, connectionSettings, chunkSize).mapMaterializedValue(_.toJava).asJava
+    buildIOScalaSource(path, chunkSize, () => connect(connectionSettings), disconnectAfterCompletion = true)
+      .mapMaterializedValue(_.toJava)
+      .asJava
+  }
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler,
+      chunkSize: Int
+  ): Source[ByteString, CompletionStage[IOResult]] =
+    fromPath(path, handler, chunkSize, disconnectAfterCompletion = false)
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
+  ): Source[ByteString, CompletionStage[IOResult]] =
+    fromPath(path, handler, DefaultChunkSize, disconnectAfterCompletion)
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler
+  ): Source[ByteString, CompletionStage[IOResult]] =
+    fromPath(path, handler, DefaultChunkSize, disconnectAfterCompletion = false)
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler,
+      chunkSize: Int,
+      disconnectAfterCompletion: Boolean
+  ): Source[ByteString, CompletionStage[IOResult]] = {
+    import scala.compat.java8.FutureConverters._
+    buildIOScalaSource(path, chunkSize, () => handler, disconnectAfterCompletion).mapMaterializedValue(_.toJava).asJava
   }
 }
 
