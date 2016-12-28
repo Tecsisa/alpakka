@@ -5,34 +5,17 @@ package akka.stream.alpakka.ftp.javadsl
 
 import akka.NotUsed
 import akka.stream.alpakka.ftp.impl._
-import akka.stream.alpakka.ftp.{ FtpFile, FtpFileSettings, RemoteFileSettings }
-import akka.stream.alpakka.ftp.RemoteFileSettings.SftpSettings
-import akka.stream.alpakka.ftp.impl.{ FtpLike, FtpSourceFactory }
+import akka.stream.alpakka.ftp.FtpFile
+import akka.stream.alpakka.ftp.impl.FtpSourceFactory
 import akka.stream.IOResult
 import akka.stream.javadsl.Source
-import akka.stream.scaladsl.{ Source => ScalaSource }
 import akka.util.ByteString
 import com.jcraft.jsch.JSch
 import org.apache.commons.net.ftp.FTPClient
-import scala.util.{ Failure, Success }
-import java.nio.file.{ Path, Paths }
+import java.nio.file.Path
 import java.util.concurrent.CompletionStage
 
-sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
-
-  /**
-   * The refined [[RemoteFileSettings]] type.
-   */
-  type S <: RemoteFileSettings
-
-  def connect(connectionSettings: S): ftpLike.Handler =
-    ftpLike.connect(connectionSettings)(ftpClient()) match {
-      case Success(handler) => handler
-      case Failure(t) => throw t
-    }
-
-  def disconnect(handler: ftpLike.Handler): Unit =
-    ftpLike.disconnect(handler)(ftpClient())
+sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
 
   /**
    * Java API: creates a [[Source]] of [[FtpFile]]s from the remote user `root` directory.
@@ -42,7 +25,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(host: String): Source[FtpFile, NotUsed] =
-    ls(host, basePath = Paths.get("/"))
+    ls(host, root)
 
   /**
    * Java API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -53,7 +36,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(host: String, basePath: Path): Source[FtpFile, NotUsed] =
-    ls(basePath, defaultSettings(host))
+    ls(root, defaultSettings(host))
 
   /**
    * Java API: creates a [[Source]] of [[FtpFile]]s from the remote user `root` directory.
@@ -64,7 +47,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(host: String, username: String, password: String): Source[FtpFile, NotUsed] =
-    ls(Paths.get("/"), defaultSettings(host, Some(username), Some(password)))
+    ls(root, defaultSettings(host, Some(username), Some(password)))
 
   /**
    * Java API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -79,7 +62,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
     ls(basePath, defaultSettings(host, Some(username), Some(password)))
 
   def ls(connectionSettings: S): Source[FtpFile, NotUsed] =
-    ls(Paths.get("/"), connectionSettings)
+    ls(root, connectionSettings)
 
   /**
    * Java API: creates a [[Source]] of [[FtpFile]]s from a base path.
@@ -89,10 +72,7 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
    * @return A [[Source]] of [[FtpFile]]s
    */
   def ls(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
-    ScalaSource
-      .fromGraph(createBrowserGraph(basePath, ftpLike,
-          _disconnectAfterCompletion = true)(() => connect(connectionSettings)))
-      .asJava
+    buildBrowserScalaSource(basePath, connectionSettings).asJava
 
   /**
    * Java API: creates a [[Source]] of [[ByteString]] from some file [[Path]].
@@ -145,26 +125,10 @@ sealed trait FtpApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
       chunkSize: Int = DefaultChunkSize
   ): Source[ByteString, CompletionStage[IOResult]] = {
     import scala.compat.java8.FutureConverters._
-    ScalaSource
-      .fromGraph(createIOGraph(path, ftpLike, chunkSize,
-          _disconnectAfterCompletion = true)(() => connect(connectionSettings)))
-      .mapMaterializedValue(_.toJava)
-      .asJava
+    buildIOScalaSource(path, connectionSettings, chunkSize).mapMaterializedValue(_.toJava).asJava
   }
-
-  /** Java API: needed because of the lack of implicit resolution in Java */
-  protected[this] implicit val ftpLike: FtpLike[FtpClient, S]
 }
 
-object Ftp extends FtpApi[FTPClient] with FtpSource with FtpDefaultSettings {
-  type S = FtpFileSettings
-  protected[this] val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
-}
-object Ftps extends FtpApi[FTPClient] with FtpsSource with FtpsDefaultSettings {
-  type S = FtpFileSettings
-  protected[this] val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
-}
-object Sftp extends FtpApi[JSch] with SftpSource with SftpDefaultSettings {
-  type S = SftpSettings
-  protected[this] val ftpLike: FtpLike[JSch, S] = FtpLike.sFtpLikeInstance
-}
+object Ftp extends FtpApi[FTPClient] with FtpSourceParams
+object Ftps extends FtpApi[FTPClient] with FtpsSourceParams
+object Sftp extends FtpApi[JSch] with SftpSourceParams
