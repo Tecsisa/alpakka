@@ -17,7 +17,7 @@ protected[ftp] trait FtpLike[FtpClient, S <: RemoteFileSettings] {
 
   def connect(connectionSettings: S)(implicit ftpClient: FtpClient): Try[Handler]
 
-  def disconnect(handler: Handler)(implicit ftpClient: FtpClient): Unit
+  def disconnect(handler: Handler): Unit
 
   def listFiles(basePath: String, handler: Handler): immutable.Seq[FtpFile]
 

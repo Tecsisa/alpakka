@@ -18,8 +18,6 @@ private[ftp] trait FtpGraphStageParams[FtpClient, S <: RemoteFileSettings] {
 
   protected def connectF: () => H
 
-  protected def ftpClient: () => FtpClient
-
   protected def ftpLike: FtpLike[FtpClient, S] { type Handler = H }
 
 }

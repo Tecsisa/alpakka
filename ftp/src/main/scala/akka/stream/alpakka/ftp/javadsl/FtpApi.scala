@@ -78,6 +78,12 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
     ls(basePath, handler, disconnectAfterCompletion = false)
 
   def ls(
+      handler: ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
+  ): Source[FtpFile, NotUsed] =
+    ls(root, handler, disconnectAfterCompletion)
+
+  def ls(
       basePath: Path,
       handler: ftpLike.Handler,
       disconnectAfterCompletion: Boolean

@@ -15,6 +15,8 @@ import java.net.InetAddress
 
 trait BaseFtpsSpec extends FtpsSupportImpl with BaseSpec {
 
+  type H = Ftps.ftpLike.Handler
+
   //#create-settings
   val settings = FtpsSettings(
     InetAddress.getByName("localhost"),
@@ -23,6 +25,12 @@ trait BaseFtpsSpec extends FtpsSupportImpl with BaseSpec {
     passiveMode = true
   )
   //#create-settings
+
+  protected def connect(): H =
+    Ftps.connect(settings)
+
+  protected def disconnect(handler: H): Unit =
+    Ftps.disconnect(handler)
 
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed] =
     if (basePath.isEmpty)
@@ -33,10 +41,19 @@ trait BaseFtpsSpec extends FtpsSupportImpl with BaseSpec {
         settings
       )
 
+  protected def listFiles(basePath: String, handler: H): Source[FtpFile, NotUsed] =
+    if (basePath.isEmpty)
+      Ftps.ls(handler)
+    else
+      Ftps.ls(getFileSystem.getPath(basePath), handler)
+
   protected def retrieveFromPath(path: String): Source[ByteString, Future[IOResult]] =
     Ftps.fromPath(
       getFileSystem.getPath(path),
       settings
     )
+
+  protected def retrieveFromPath(path: String, handler: H): Source[ByteString, Future[IOResult]] =
+    Ftps.fromPath(getFileSystem.getPath(path), handler)
 
 }

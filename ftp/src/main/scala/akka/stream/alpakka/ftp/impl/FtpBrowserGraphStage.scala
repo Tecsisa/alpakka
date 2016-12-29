@@ -24,15 +24,16 @@ private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings]
     val logic = new GraphStageLogic(shape) {
       import shape.out
 
-      private[this] implicit val client: FtpClient = ftpClient()
       private[this] var handler: Option[H] = None
       private[this] var buffer: Seq[FtpFile] = Seq.empty[FtpFile]
+      private[this] var connected: Boolean = false
 
       override def preStart(): Unit = {
         super.preStart()
         try {
           handler = Some(connectF())
           buffer = initBuffer(path.toAbsolutePath.toString)
+          connected = true
         } catch {
           case NonFatal(t) =>
             disconnect()
@@ -47,8 +48,10 @@ private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings]
       }
 
       protected[this] def disconnect(): Unit =
-        if (disconnectAfterCompletion)
+        if (disconnectAfterCompletion && connected) {
           handler.foreach(ftpLike.disconnect)
+          connected = false
+        }
 
       setHandler(out,
         new OutHandler {

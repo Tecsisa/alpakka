@@ -25,7 +25,7 @@ private[ftp] trait FtpBaseApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
     ftpLike.connect(connectionSettings)(ftpClient()).get
 
   def disconnect(handler: ftpLike.Handler): Unit =
-    ftpLike.disconnect(handler)(ftpClient())
+    ftpLike.disconnect(handler)
 
   protected[this] val root: Path = Paths.get("/")
 
@@ -49,15 +49,15 @@ private[ftp] trait FtpBaseApi[FtpClient] { _: FtpSourceFactory[FtpClient] =>
 
 private[ftp] trait FtpSourceParams extends FtpSource with FtpDefaultSettings {
   type S = FtpFileSettings
-  protected[this] val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
+  val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
 }
 
 private[ftp] trait FtpsSourceParams extends FtpsSource with FtpsDefaultSettings {
   type S = FtpFileSettings
-  protected[this] val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
+  val ftpLike: FtpLike[FTPClient, S] = FtpLike.ftpLikeInstance
 }
 
 private[ftp] trait SftpSourceParams extends SftpSource with SftpDefaultSettings {
   type S = SftpSettings
-  protected[this] val ftpLike: FtpLike[JSch, S] = FtpLike.sFtpLikeInstance
+  val ftpLike: FtpLike[JSch, S] = FtpLike.sFtpLikeInstance
 }

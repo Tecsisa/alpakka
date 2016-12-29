@@ -32,30 +32,30 @@ private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings]
     val logic = new GraphStageLogic(shape) {
       import shape.out
 
-      private[this] implicit val client: FtpClient = ftpClient()
       private[this] var handler: Option[H] = None
       private[this] var isOpt: Option[InputStream] = None
       private[this] var readBytesTotal: Long = 0L
+      private[this] var connected: Boolean = false
 
       override def preStart(): Unit = {
         super.preStart()
         try {
           handler = Some(connectF())
+          connected = true
           val tryIs = ftpLike.retrieveFileInputStream(path.toAbsolutePath.toString, handler.get)
-          if (tryIs.isSuccess)
-            isOpt = tryIs.toOption
-          else
-            tryIs.failed.foreach(throw _)
+          isOpt = Some(tryIs.get)
         } catch {
           case NonFatal(t) =>
+            t.printStackTrace()
             disconnect()
             failStage(t)
         }
       }
 
       protected[this] def disconnect(): Unit =
-        if (disconnectAfterCompletion)
+        if (disconnectAfterCompletion && connected) {
           handler.foreach(ftpLike.disconnect)
+        }
 
       setHandler(out,
         new OutHandler {

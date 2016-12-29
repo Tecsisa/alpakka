@@ -31,11 +31,11 @@ private[ftp] trait FtpSourceFactory[FtpClient] { self =>
     new FtpBrowserGraphStage[FtpClient, S] {
       type H = _ftpLike.Handler
       lazy val name: String = ftpBrowserSourceName
-      val path: Path = _path
-      val disconnectAfterCompletion: Boolean = _disconnectAfterCompletion
-      val connectF: () => H = _handlerF
-      val ftpClient: () => FtpClient = self.ftpClient
-      val ftpLike: FtpLike[FtpClient, S] { type Handler = H } = _ftpLike
+      lazy val path: Path = _path
+      lazy val disconnectAfterCompletion: Boolean = _disconnectAfterCompletion
+      lazy val connectF: () => H = _handlerF
+      lazy val ftpClient: () => FtpClient = self.ftpClient
+      lazy val ftpLike: FtpLike[FtpClient, S] { type Handler = H } = _ftpLike
     }
 
   protected[this] def createIOGraph(
@@ -47,12 +47,12 @@ private[ftp] trait FtpSourceFactory[FtpClient] { self =>
     new FtpIOGraphStage[FtpClient, S] {
       type H = _ftpLike.Handler
       lazy val name: String = ftpIOSourceName
-      val path: Path = _path
-      val disconnectAfterCompletion: Boolean = _disconnectAfterCompletion
-      val connectF: () => H = _handlerF
-      val ftpClient: () => FtpClient = self.ftpClient
-      val ftpLike: FtpLike[FtpClient, S] { type Handler = H } = _ftpLike
-      val chunkSize: Int = _chunkSize
+      lazy val path: Path = _path
+      lazy val disconnectAfterCompletion: Boolean = _disconnectAfterCompletion
+      lazy val connectF: () => H = _handlerF
+      lazy val ftpClient: () => FtpClient = self.ftpClient
+      lazy val ftpLike: FtpLike[FtpClient, S] { type Handler = H } = _ftpLike
+      lazy val chunkSize: Int = _chunkSize
     }
 
   protected[this] def defaultSettings(

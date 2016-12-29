@@ -7,26 +7,42 @@ import akka.NotUsed
 import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import org.scalactic.source.Position
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{ BeforeAndAfterAll, Matchers, WordSpecLike }
+import org.scalatest.{ BeforeAndAfter, BeforeAndAfterAll, Matchers, WordSpecLike }
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.DurationInt
 
 trait BaseSpec
     extends WordSpecLike
     with Matchers
+    with BeforeAndAfter
     with BeforeAndAfterAll
     with ScalaFutures
     with AkkaSupport
     with FtpSupport {
 
+  protected type H
+
+  protected def connect(): H
+
+  protected def disconnect(handler: H): Unit
+
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed]
 
+  protected def listFiles(basePath: String, handler: H): Source[FtpFile, NotUsed]
+
   protected def retrieveFromPath(path: String): Source[ByteString, Future[IOResult]]
+
+  protected def retrieveFromPath(path: String, handler: H): Source[ByteString, Future[IOResult]]
 
   protected def startServer(): Unit
 
   protected def stopServer(): Unit
+
+  after {
+    cleanFiles()
+  }
 
   override protected def beforeAll() = {
     super.beforeAll()

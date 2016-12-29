@@ -31,7 +31,7 @@ private[ftp] trait SftpOperations { _: FtpLike[JSch, SftpSettings] =>
     channel
   }
 
-  def disconnect(handler: Handler)(implicit ftpClient: JSch): Unit = {
+  def disconnect(handler: Handler): Unit = {
     val session = handler.getSession
     if (session.isConnected) {
       session.disconnect()

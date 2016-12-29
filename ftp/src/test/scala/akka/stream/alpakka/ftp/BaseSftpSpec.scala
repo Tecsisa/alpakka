@@ -15,6 +15,8 @@ import java.net.InetAddress
 
 trait BaseSftpSpec extends SftpSupportImpl with BaseSpec {
 
+  type H = sFtp.ftpLike.Handler
+
   //#create-settings
   val settings = SftpSettings(
     InetAddress.getByName("localhost"),
@@ -23,6 +25,12 @@ trait BaseSftpSpec extends SftpSupportImpl with BaseSpec {
     strictHostKeyChecking = false
   )
   //#create-settings
+
+  protected def connect(): H =
+    sFtp.connect(settings)
+
+  protected def disconnect(handler: H): Unit =
+    sFtp.disconnect(handler)
 
   protected def listFiles(basePath: String): Source[FtpFile, NotUsed] =
     if (basePath.isEmpty)
@@ -33,9 +41,18 @@ trait BaseSftpSpec extends SftpSupportImpl with BaseSpec {
         settings
       )
 
+  protected def listFiles(basePath: String, handler: H): Source[FtpFile, NotUsed] =
+    if (basePath.isEmpty)
+      sFtp.ls(handler)
+    else
+      sFtp.ls(getFileSystem.getPath(basePath), handler)
+
   protected def retrieveFromPath(path: String): Source[ByteString, Future[IOResult]] =
     sFtp.fromPath(
       getFileSystem.getPath(path),
       settings
     )
+
+  protected def retrieveFromPath(path: String, handler: H): Source[ByteString, Future[IOResult]] =
+    sFtp.fromPath(getFileSystem.getPath(path), handler)
 }

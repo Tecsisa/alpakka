@@ -29,10 +29,10 @@ private[ftp] trait FtpOperations { _: FtpLike[FTPClient, FtpFileSettings] =>
     ftpClient
   }
 
-  def disconnect(handler: Handler)(implicit ftpClient: FTPClient): Unit =
-    if (ftpClient.isConnected) {
-      ftpClient.logout()
-      ftpClient.disconnect()
+  def disconnect(handler: Handler): Unit =
+    if (handler.isConnected) {
+      handler.logout()
+      handler.disconnect()
     }
 
   def listFiles(basePath: String, handler: Handler): immutable.Seq[FtpFile] = {

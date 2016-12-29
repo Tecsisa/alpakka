@@ -74,6 +74,15 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
   def ls(basePath: Path, connectionSettings: S): Source[FtpFile, NotUsed] =
     buildBrowserScalaSource(basePath, () => connect(connectionSettings), disconnectAfterCompletion = true)
 
+  def ls(handler: ftpLike.Handler): Source[FtpFile, NotUsed] =
+    ls(root, handler)
+
+  def ls(
+      handler: ftpLike.Handler,
+      disconnectAfterCompletion: Boolean
+  ): Source[FtpFile, NotUsed] =
+    ls(root, handler, disconnectAfterCompletion)
+
   def ls(
       basePath: Path,
       handler: ftpLike.Handler,
@@ -108,6 +117,12 @@ sealed trait FtpApi[FtpClient] extends FtpBaseApi[FtpClient] { _: FtpSourceFacto
       connectionSettings: S
   ): Source[ByteString, Future[IOResult]] =
     fromPath(path, connectionSettings, DefaultChunkSize)
+
+  def fromPath(
+      path: Path,
+      handler: ftpLike.Handler
+  ): Source[ByteString, Future[IOResult]] =
+    fromPath(path, handler, DefaultChunkSize)
 
   /**
    * Scala API: creates a [[Source]] of [[ByteString]] from some file [[Path]].
